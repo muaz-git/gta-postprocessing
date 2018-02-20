@@ -69,13 +69,12 @@ def do_one():
     voc = VOC_Generator([sample_snapshot], "./outtt")
     voc.save_snapshots()
 
-# do_one()
+
 def process_snapshot(snapshot: Snapshot):
     processor = Processor(snapshot, base_data_dir)
     processor.read_tiff()
     processor.refine_bbox()
     return snapshot
-
 
 
 def main_fn(snapshotList_tmp):
@@ -107,6 +106,7 @@ def main_fn(snapshotList_tmp):
 
     return results
 
+
 def coverage_debugger(snapshotList:List[Snapshot]):
     totalDets = 0
     totalPosit = 0
@@ -123,6 +123,7 @@ def coverage_debugger(snapshotList:List[Snapshot]):
                 totalNegat+=1
             totalDets+=1
     print("\n\n\tPos = {0}\n\tNeg = {1}\n\tTotal={2}".format(totalPosit, totalNegat, totalDets))
+
 
 def main_1():
 
@@ -146,8 +147,6 @@ def main_1():
     result_tmp.add_done_callback(partial(on_done_tmp))
     pool_tmp.shutdown(wait=True)
 
+
 if __name__ == "__main__":
     main_1()
-    # do_one()
-    # main_fn()
-
