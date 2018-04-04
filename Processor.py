@@ -68,7 +68,7 @@ class Processor:
 
         lastdir = self.num_directories(tiffimg) - 1
 
-        get_img_from_directory(tiffimg, dir_num=0, dst_img=image)
+        get_img_from_directory(tiffimg, dir_num=4, dst_img=image)
         get_img_from_directory(tiffimg, dir_num=lastdir-1, dst_img=depth)
         get_img_from_directory(tiffimg, dir_num=lastdir, dst_img=stencil)
 
@@ -349,12 +349,12 @@ class Processor:
         debug_img = cv2.addWeighted(debug_img[:, :, :3], 0.80, seg_mask_refined, 0.20, 0)
         if self.resize_debugImg:
             print("Processor->get_debugImg() : resizing debug image")
-            debug_img = cv2.resize(debug_img, (0, 0), fx=0.4, fy=0.4)
+            debug_img = cv2.resize(debug_img, (0, 0), fx=0.6, fy=0.6)
         return debug_img
 
     def unique_color(self, val, typ=None):
         v = 0.99
-        if typ=='person':
+        if typ=='person' or typ=='property':
             s = 0.99
         elif typ == 'car':
             s = 0.3

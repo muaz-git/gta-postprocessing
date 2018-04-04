@@ -9,7 +9,7 @@ from Detection import Detection
 
 class db_manager:
     def __init__(self):
-        self.ini_filename = "gta-postprocessing.ini.example"
+        self.ini_filename = "gta-postprocessing.ini.actual"
         self.db_uri = None
 
     def open_connection(self):
@@ -64,14 +64,44 @@ class db_manager:
 
         return snapshot_tmp
 
-    def getSnapShotsFromSession(self, session_id):
+    def getAllRuns(self, sess_id):
+        query = "SELECT run_id FROM runs WHERE session_id="+str(sess_id)+"order by run_id asc"
+        self.open_connection()
+        prep_stmt = self.conn.query(query)
+        runIds = []
+        for p in prep_stmt:
+            runIds.append(p['run_id'])
+        self.close_connection()
+
+        return runIds
+
+    def getSnapShotsFromSessionAndRun(self, sess_id, r_id):
         query = "SELECT snapshot_id, detection_id, coverage, type, class, best_bbox, runguid::text, imagepath, view_matrix," \
                 "width, height, proj_matrix, handle, pos::bytea, rot::bytea, bbox, ngv_box3dpolygon(bbox3d)::bytea as fullbox," \
                 "ST_MakePoint(ST_XMin(bbox3d), ST_YMin(bbox3d), ST_ZMin(bbox3d))::bytea as bbox3d_min," \
-                "ST_MakePoint(ST_XMax(bbox3d), ST_YMax(bbox3d), ST_ZMax(bbox3d))::bytea as bbox3d_max FROM detections JOIN snapshots USING (snapshot_id) JOIN runs USING (run_id) JOIN sessions USING(session_id) WHERE session_id="+str(session_id)+" and processed=false and camera_pos <-> pos < 200 order by snapshot_id desc"
+                "ST_MakePoint(ST_XMax(bbox3d), ST_YMax(bbox3d), ST_ZMax(bbox3d))::bytea as bbox3d_max FROM detections JOIN snapshots USING (snapshot_id) JOIN runs USING (run_id) JOIN sessions USING(session_id) WHERE session_id=" + str(
+            sess_id) + " and run_id="+str(r_id)+" and processed=false and camera_pos <-> pos < 200 order by snapshot_id desc"
+        self.open_connection()
+        prep_stmt = self.conn.query(query)
+
+        snapshotList = []
+        for snapshot_id, db_objs in groupby(prep_stmt, key=lambda x: x['snapshot_id']):
+            db_objs = list(db_objs)
+            snapshot_tmp = self.form_snapshots_and_detections(db_objs)
+            snapshotList.append(snapshot_tmp)
+        self.close_connection()
+        return snapshotList
+
+    def getSnapShotsFromSession(self, sess_id):
+
+        query = "SELECT snapshot_id, detection_id, coverage, type, class, best_bbox, runguid::text, imagepath, view_matrix," \
+                "width, height, proj_matrix, handle, pos::bytea, rot::bytea, bbox, ngv_box3dpolygon(bbox3d)::bytea as fullbox," \
+                "ST_MakePoint(ST_XMin(bbox3d), ST_YMin(bbox3d), ST_ZMin(bbox3d))::bytea as bbox3d_min," \
+                "ST_MakePoint(ST_XMax(bbox3d), ST_YMax(bbox3d), ST_ZMax(bbox3d))::bytea as bbox3d_max FROM detections JOIN snapshots USING (snapshot_id) JOIN runs USING (run_id) JOIN sessions USING(session_id) WHERE session_id="+str(sess_id)+" and processed=false and camera_pos <-> pos < 200 order by snapshot_id desc"
 
         self.open_connection()
         prep_stmt = self.conn.query(query)
+
         snapshotList = []
         for snapshot_id, db_objs in groupby(prep_stmt, key=lambda x: x['snapshot_id']):
             db_objs = list(db_objs)
@@ -81,7 +111,8 @@ class db_manager:
         self.close_connection()
         return snapshotList
 
-    def update_bestBoxes_processed(self, snapshot:Snapshot, pixel_path: Path):
+    # def update_bestBoxes_processed(self, snapshot:Snapshot, pixel_path: Path):
+    def update_bestBoxes_processed(self, snapshot:Snapshot):
         self.open_connection()
 
         update_query = self.conn.prepare("UPDATE detections SET best_bbox=$1, coverage=$2 WHERE detection_id = $3")

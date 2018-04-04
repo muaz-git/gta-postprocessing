@@ -62,7 +62,8 @@ CREATE TYPE detection_type AS ENUM (
     'background',
     'person',
     'car',
-    'bicycle'
+    'bicycle',
+    'property'
 );
 
 

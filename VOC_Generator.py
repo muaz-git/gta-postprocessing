@@ -8,11 +8,51 @@ import numpy as np
 import cv2
 
 class VOC_Generator:
-    def __init__(self, snapshotList:List[Snapshot], outputFolder, save_colored_seg_mask=False):
-        self.snapshotList = snapshotList
+
+    # def __init__(self, snapshotList:List[Snapshot], outputFolder, save_colored_seg_mask=False):
+    #     self.snapshotList = snapshotList
+    #     self.output_folder = outputFolder
+    #     self.runFolder = None
+    #     self.save_colored_seg_mask = save_colored_seg_mask
+
+    def __init__(self, runguid, outputFolder, save_colored_seg_mask=False ):
+        self.runguid = runguid
         self.output_folder = outputFolder
         self.runFolder = None
         self.save_colored_seg_mask = save_colored_seg_mask
+
+    @staticmethod
+    def create_folders(self):
+        Path(self.output_folder).mkdir(parents=True, exist_ok=True)
+        self.runFolder = (Path(self.output_folder)/Path(self.runguid))
+        self.runFolder.mkdir(exist_ok=True)
+        # (self.runFolder/Path("Annotations")).mkdir(exist_ok=True)
+        (self.runFolder/Path("AnnotationsJson")).mkdir(exist_ok=True)
+        (self.runFolder/Path("ImageSets/Main")).mkdir(parents=True, exist_ok=True)
+        (self.runFolder/Path("JPEGImages")).mkdir(exist_ok=True)
+        (self.runFolder/Path("SegmentationObject")).mkdir(exist_ok=True)
+        # (self.runFolder/Path("SegmentationObjectColored")).mkdir(exist_ok=True)
+        (self.runFolder/Path("debugged")).mkdir(exist_ok=True)
+
+    @staticmethod
+    def save_snapshot(self, snapShot:Snapshot):
+        annotationJson = self.createAnnotationJSON(snapShot)
+        with open(self.runFolder / "AnnotationsJson" / (str(snapShot.snapshot_id) + ".json"), 'w') as jsonFile:
+            json.dump(annotationJson, jsonFile)
+        if self.save_colored_seg_mask:
+            print("VOC_Generator->save_snapshots() : need to save colored seg mask.")
+
+        if snapShot.refined_stencil_coded is not None:
+            np.savez_compressed(str(self.runFolder / Path("SegmentationObject") / (str(snapShot.snapshot_id) + ".npz")),
+                                snapShot.refined_stencil_coded)  # saves filtered stencil map in compressed format
+
+        if snapShot.debug_image is not None:
+            cv2.imwrite(str(self.runFolder / Path("debugged") / (str(snapShot.snapshot_id) + ".jpg")),
+                        snapShot.debug_image)
+    @staticmethod
+    def saveTrainTest(self, snapshotIdList):
+        image_set_file = self.runFolder / Path("ImageSets/Main") / "trainval.txt"
+        image_set_file.write_text("\n".join([str(snapshotId) for snapshotId in snapshotIdList]))
 
     def save_snapshots(self):
         def verifier(snapshotList:List[Snapshot]):
@@ -112,15 +152,5 @@ class VOC_Generator:
         root['objects'] = objects
         return root
 
-    def create_folders(self):
-        Path(self.output_folder).mkdir(parents=True, exist_ok=True)
-        self.runFolder = (Path(self.output_folder)/Path(self.snapshotList[0].runguid))
-        self.runFolder.mkdir(exist_ok=True)
-        # (self.runFolder/Path("Annotations")).mkdir(exist_ok=True)
-        (self.runFolder/Path("AnnotationsJson")).mkdir(exist_ok=True)
-        (self.runFolder/Path("ImageSets/Main")).mkdir(parents=True, exist_ok=True)
-        (self.runFolder/Path("JPEGImages")).mkdir(exist_ok=True)
-        (self.runFolder/Path("SegmentationObject")).mkdir(exist_ok=True)
-        # (self.runFolder/Path("SegmentationObjectColored")).mkdir(exist_ok=True)
-        (self.runFolder/Path("debugged")).mkdir(exist_ok=True)
+
 
