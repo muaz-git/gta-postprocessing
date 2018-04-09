@@ -1,3 +1,9 @@
+# Processor.py is a helper file which provides interface to :
+# 1) read directories in TIFF files,
+# 2) project 3d bounding boxes on image plane,
+# 3) refine stencil map,
+# 4) refine bounding boxes with the help of Projection/View matrices, depth/stencil map and projected 3d bounding boxes.
+
 import numpy as np
 from shapely.geometry.point import Point
 from math import *
@@ -31,6 +37,7 @@ class Processor:
         self.base_data_dir = base_data_dir
         self.resize_debugImg = resize_debugImg
 
+    # finds total number of "directories" in a tiff file
     def num_directories(self, tiffimage):
         count = 1
         TIFF.setdirectory(tiffimage, 0)
@@ -40,6 +47,7 @@ class Processor:
         TIFF.setdirectory(tiffimage, 0)
         return count
 
+    # read tiff directories
     def read_tiff(self):
         imgpath = Path(self.base_data_dir) / Path(self.snapshot.runguid) / Path(self.snapshot.imagepath, mode='r')
 
@@ -62,6 +70,7 @@ class Processor:
         depth = np.empty((h, w), dtype=np.float32)
         stencil = np.empty((h, w), dtype=np.uint8)
 
+        # reads image from particular directory of TIFF file.
         def get_img_from_directory(tiff_tmp, dir_num, dst_img):
             TIFF.setdirectory(tiff_tmp, dir_num)
             TIFF.readencodedstrip(tiff_tmp, 0, dst_img.ctypes.data, -1)
@@ -221,6 +230,8 @@ class Processor:
             # best_boxes.append(BBox(detection_obj.detection_id, bbox, cov))
         # return best_boxes
 
+    # following method refines stencil map.
+    # More details on stencil map: http://www.adriancourreges.com/blog/2015/11/02/gta-v-graphics-study/
     def stencil_cull(self, segmentations, cls=StenCode.car):
         stencil = self.snapshot.img_dict["stencil"]  # Do I need copy of it?
         w = self.snapshot.width
@@ -236,6 +247,7 @@ class Processor:
 
         return segmentations * thresh
 
+    # forming coordinates in to world space.
     def to_world_space(self):
         w = self.snapshot.width
         h = self.snapshot.height

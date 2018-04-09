@@ -30,40 +30,6 @@ class db_manager:
         CONFIG.read(self.ini_filename)
         self.db_uri = CONFIG["Database"]["URI"]
 
-
-    def form_snapshots_and_detections(self, db_objs):
-        snapshot_tmp = Snapshot()
-        snapshot_tmp.snapshot_id = db_objs[0]['snapshot_id']
-        snapshot_tmp.runguid = db_objs[0]['runguid']
-        snapshot_tmp.imagepath = db_objs[0]['imagepath']
-
-        snapshot_tmp.view_matrix = np.array(db_objs[0]['view_matrix'], dtype=np.float64)
-        snapshot_tmp.proj_matrix = np.array(db_objs[0]['proj_matrix'], dtype=np.float64)
-
-        snapshot_tmp.width = db_objs[0]['width']
-        snapshot_tmp.height = db_objs[0]['height']
-
-        detectionList = []
-        for obj in db_objs:
-            detection_tmp = Detection()
-            detection_tmp.detection_id = obj['detection_id']
-            detection_tmp.type = obj['type']
-            detection_tmp.pos = obj['pos']  # need to process this position
-            detection_tmp.bbox = obj['bbox']  # geometry.Box
-            detection_tmp.vehicle_class = obj['class']
-            detection_tmp.handle = obj['handle']
-            detection_tmp.best_bbox = obj['best_bbox']
-            detection_tmp.fullbox = obj['fullbox']
-            detection_tmp.bbox3d_min = obj['bbox3d_min']
-            detection_tmp.bbox3d_max = obj['bbox3d_max']
-            detection_tmp.rotation = obj['rot']
-            detection_tmp.coverage = obj['coverage']
-            detectionList.append(detection_tmp)
-
-        snapshot_tmp.detections = detectionList
-
-        return snapshot_tmp
-
     def getAllRuns(self, sess_id):
         query = "SELECT run_id, runguid FROM runs WHERE session_id="+str(sess_id)+"order by run_id asc"
         self.open_connection()
@@ -78,7 +44,45 @@ class db_manager:
 
         return runIds, runguIds
 
+    # fetches data from database that belongs to particular run of particular session and form them in data structure.
     def getSnapShotsFromSessionAndRun(self, sess_id, r_id):
+        # sess_id : session id to be processed.
+        # r_id : run id that belongs to sess_id
+
+        # forms data in to datastructures.
+        def form_snapshots_and_detections(db_objs):
+            snapshot_tmp = Snapshot()
+            snapshot_tmp.snapshot_id = db_objs[0]['snapshot_id']
+            snapshot_tmp.runguid = db_objs[0]['runguid']
+            snapshot_tmp.imagepath = db_objs[0]['imagepath']
+
+            snapshot_tmp.view_matrix = np.array(db_objs[0]['view_matrix'], dtype=np.float64)
+            snapshot_tmp.proj_matrix = np.array(db_objs[0]['proj_matrix'], dtype=np.float64)
+
+            snapshot_tmp.width = db_objs[0]['width']
+            snapshot_tmp.height = db_objs[0]['height']
+
+            detectionList = []
+            for obj in db_objs:
+                detection_tmp = Detection()
+                detection_tmp.detection_id = obj['detection_id']
+                detection_tmp.type = obj['type']
+                detection_tmp.pos = obj['pos']  # need to process this position
+                detection_tmp.bbox = obj['bbox']  # geometry.Box
+                detection_tmp.vehicle_class = obj['class']
+                detection_tmp.handle = obj['handle']
+                detection_tmp.best_bbox = obj['best_bbox']
+                detection_tmp.fullbox = obj['fullbox']
+                detection_tmp.bbox3d_min = obj['bbox3d_min']
+                detection_tmp.bbox3d_max = obj['bbox3d_max']
+                detection_tmp.rotation = obj['rot']
+                detection_tmp.coverage = obj['coverage']
+                detectionList.append(detection_tmp)
+
+            snapshot_tmp.detections = detectionList
+
+            return snapshot_tmp
+
         query = "SELECT snapshot_id, detection_id, coverage, type, class, best_bbox, runguid::text, imagepath, view_matrix," \
                 "width, height, proj_matrix, handle, pos::bytea, rot::bytea, bbox, ngv_box3dpolygon(bbox3d)::bytea as fullbox," \
                 "ST_MakePoint(ST_XMin(bbox3d), ST_YMin(bbox3d), ST_ZMin(bbox3d))::bytea as bbox3d_min," \
@@ -90,10 +94,11 @@ class db_manager:
         snapshotList = []
         for snapshot_id, db_objs in groupby(prep_stmt, key=lambda x: x['snapshot_id']):
             db_objs = list(db_objs)
-            snapshot_tmp = self.form_snapshots_and_detections(db_objs)
+            snapshot_tmp = form_snapshots_and_detections(db_objs)
             snapshotList.append(snapshot_tmp)
         self.close_connection()
         return snapshotList
+
 
     def getSnapShotsFromSession(self, sess_id):
 

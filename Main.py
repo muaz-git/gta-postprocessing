@@ -36,13 +36,13 @@ import psutil
 import math
 import os
 
-base_data_dir = '/home/muaz/archives/'
-pixel_path = './out/'
-output_dir = './outtt/data4/'
+base_data_dir = '/home/muaz/archives/' # Directory in which extracted zip files exist.
+output_dir = './outtt/data4/'  # Directory in which processed data will be saved.
 
 db = db_manager()
 db.setFalseProcessed()
 
+# process_snapshot refines bounding boxes
 def process_snapshot(snapshot: Snapshot):
     processor = Processor(snapshot, base_data_dir)
     processor.read_tiff()
@@ -52,6 +52,7 @@ def process_snapshot(snapshot: Snapshot):
     return snapshot
 
 
+# main_fn() iterates through individual snapshot call function to refine bounding boxes, function can be named process_snapshotList
 def main_fn(snapshotList_tmp, vocObj:VOC_Generator):
     pbar = ProgressBar(max_value=len(snapshotList_tmp)).start()
     i = 0
@@ -83,25 +84,6 @@ def main_fn(snapshotList_tmp, vocObj:VOC_Generator):
 
     return results
 
-
-def coverage_debugger(snapshotList:List[Snapshot]):
-    totalDets = 0
-    totalPosit = 0
-    totalNegat = 0
-
-    for snap in snapshotList:
-        for detObj in snap.detections:
-
-            assert isinstance(detObj, Detection)
-            if detObj.coverage>0:
-                print("{0} has a {1}".format(snap.snapshot_id, detObj.type))
-                totalPosit+=1
-            else:
-                totalNegat+=1
-            totalDets+=1
-    print("\n\n\tPos = {0}\n\tNeg = {1}\n\tTotal={2}".format(totalPosit, totalNegat, totalDets))
-
-
 def main_1(snapshotList):
     voc = VOC_Generator(snapshotList[0].runguid, output_dir)
     voc.create_folders(voc)
@@ -114,10 +96,7 @@ def main_1(snapshotList):
         snapshotIDList = x.result()
         sem_tmp.release()
         with lck_tmp:
-            # coverage_debugger(updated_snapshotList)
-            # voc = VOC_Generator(updated_snapshotList, "./outtt")
             voc.saveTrainTest(voc, snapshotIDList)
-            # voc.save_snapshots()
 
     sem_tmp.acquire()
     result_tmp = pool_tmp.submit(main_fn, snapshotList, voc)
@@ -125,14 +104,14 @@ def main_1(snapshotList):
     pool_tmp.shutdown(wait=True)
 
 def main_0():
-    session_id_to_process = 59
-    allRunIds, allRunguIds = db.getAllRuns(sess_id=session_id_to_process)
+    session_id_to_process = 59  # session id to be processed.
+    allRunIds, allRunguIds = db.getAllRuns(sess_id=session_id_to_process) # fetches all runIds and runguids that belongs to same session.
 
     for runId, runGuid in zip(allRunIds, allRunguIds):
         if not os.path.isdir(base_data_dir + str(runGuid)):
             continue
 
-        snapshotListWithRunId = db.getSnapShotsFromSessionAndRun(session_id_to_process, runId)
+        snapshotListWithRunId = db.getSnapShotsFromSessionAndRun(session_id_to_process, runId)  # form data from db in to data structure.
         # snapshotListWithRunId = snapshotListWithRunId[:10]
         print("\n\nFor runid="+str(runId)+"\n\n")
         if len(snapshotListWithRunId)>0:
@@ -141,35 +120,3 @@ def main_0():
 if __name__ == "__main__":
 
     main_0()
-
-
-# do_one() and debug_1() functions were created for debugging purpose.
-def debug_1():
-    ref_coded = sample_snapshot.refined_stencil_coded
-    print(np.unique(ref_coded))
-    return
-    ref_colored = sample_snapshot.refined_stencil_colored
-    deb = sample_snapshot.debug_image
-    # ref_coded= cv2.resize(ref_coded, (int(sample_snapshot.width*0.5), int(sample_snapshot.height*0.5)))
-    ref_colored = cv2.resize(ref_colored, (int(sample_snapshot.width * 0.5), int(sample_snapshot.height * 0.5)))
-    deb = cv2.resize(deb, (int(sample_snapshot.width * 0.5), int(sample_snapshot.height * 0.5)))
-    cv2.imshow("ref_colored", ref_colored)
-    cv2.imshow("deb", deb)
-    # cv2.imshow("ref_coded",ref_coded)
-    cv2.waitKey()
-
-
-def do_one():
-    idx_to_analyze = 30
-    snapshotList = db.getSnapShotsFromSession(session_id=1)
-    sample_snapshot = snapshotList[idx_to_analyze]
-    assert isinstance(sample_snapshot, Snapshot)
-
-    processor = Processor(sample_snapshot, base_data_dir)
-    processor.read_tiff()
-
-    processor.refine_bbox()
-    # debug_1()
-    db.update_bestBoxes_processed(sample_snapshot, Path(pixel_path))  # This code was also saving stencil map.
-    voc = VOC_Generator([sample_snapshot], "./outtt")
-    voc.save_snapshots()

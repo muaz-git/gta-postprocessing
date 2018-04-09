@@ -1,3 +1,8 @@
+# VOC_Generator.py provides an interface to :
+# 1) create and save JSON annotation files similar fashion to PASCAL VOC format
+# 2) save refined segmentation map in a loss-less file.
+# 3) for saving space, saving images are skipped
+
 from Snapshot import Snapshot
 from Detection import Detection
 from pathlib import Path
@@ -21,6 +26,7 @@ class VOC_Generator:
         self.runFolder = None
         self.save_colored_seg_mask = save_colored_seg_mask
 
+    # create_folders() creates directory structure similar to PASCAL_VOC dataset format with directory name "runguid" as parent.
     @staticmethod
     def create_folders(self):
         Path(self.output_folder).mkdir(parents=True, exist_ok=True)
@@ -34,6 +40,7 @@ class VOC_Generator:
         # (self.runFolder/Path("SegmentationObjectColored")).mkdir(exist_ok=True)
         (self.runFolder/Path("debugged")).mkdir(exist_ok=True)
 
+    # save_snapshot(): saves refined segmentation map, json file and debugging image of a snapshot.
     @staticmethod
     def save_snapshot(self, snapShot:Snapshot):
         annotationJson = self.createAnnotationJSON(snapShot)
@@ -54,6 +61,7 @@ class VOC_Generator:
         image_set_file = self.runFolder / Path("ImageSets/Main") / "trainval.txt"
         image_set_file.write_text("\n".join([str(snapshotId) for snapshotId in snapshotIdList]))
 
+    # save_snapshots() iterates over all snapshots and save them by calling save_snapshot()
     def save_snapshots(self):
         def verifier(snapshotList:List[Snapshot]):
             # verifies if all snapshots belong to same run
@@ -95,6 +103,7 @@ class VOC_Generator:
         image_set_file = self.runFolder/Path("ImageSets/Main") / "trainval.txt"
         image_set_file.write_text("\n".join([str(snapshot.snapshot_id) for snapshot in self.snapshotList]))
 
+    # createAnnotationJSON(): parse snapshot in to a json object.
     def createAnnotationJSON(self, snapshot:Snapshot):
         root = {}
         root['folder'] = str(self.output_folder+'/'+snapshot.runguid)
