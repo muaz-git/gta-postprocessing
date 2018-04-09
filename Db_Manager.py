@@ -65,15 +65,18 @@ class db_manager:
         return snapshot_tmp
 
     def getAllRuns(self, sess_id):
-        query = "SELECT run_id FROM runs WHERE session_id="+str(sess_id)+"order by run_id asc"
+        query = "SELECT run_id, runguid FROM runs WHERE session_id="+str(sess_id)+"order by run_id asc"
         self.open_connection()
         prep_stmt = self.conn.query(query)
         runIds = []
+        runguIds = []
         for p in prep_stmt:
             runIds.append(p['run_id'])
+            runguIds.append(p['runguid'])
+
         self.close_connection()
 
-        return runIds
+        return runIds, runguIds
 
     def getSnapShotsFromSessionAndRun(self, sess_id, r_id):
         query = "SELECT snapshot_id, detection_id, coverage, type, class, best_bbox, runguid::text, imagepath, view_matrix," \

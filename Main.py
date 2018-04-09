@@ -34,11 +34,11 @@ from multiprocessing import Lock
 from typing import List
 import psutil
 import math
-
+import os
 
 base_data_dir = '/home/muaz/archives/'
 pixel_path = './out/'
-output_dir = './outtt'
+output_dir = './outtt/data4/'
 
 db = db_manager()
 db.setFalseProcessed()
@@ -125,15 +125,16 @@ def main_1(snapshotList):
     pool_tmp.shutdown(wait=True)
 
 def main_0():
-    session_id_to_process = 58
-    allRunIds = db.getAllRuns(sess_id=session_id_to_process)
-    for i in allRunIds:
-        print(i)
-    exit()
-    for i in allRunIds:
-        snapshotListWithRunId = db.getSnapShotsFromSessionAndRun(session_id_to_process, i)
+    session_id_to_process = 59
+    allRunIds, allRunguIds = db.getAllRuns(sess_id=session_id_to_process)
+
+    for runId, runGuid in zip(allRunIds, allRunguIds):
+        if not os.path.isdir(base_data_dir + str(runGuid)):
+            continue
+
+        snapshotListWithRunId = db.getSnapShotsFromSessionAndRun(session_id_to_process, runId)
         # snapshotListWithRunId = snapshotListWithRunId[:10]
-        print("\n\nFor runid="+str(i)+"\n\n")
+        print("\n\nFor runid="+str(runId)+"\n\n")
         if len(snapshotListWithRunId)>0:
             main_1(snapshotListWithRunId)
 
